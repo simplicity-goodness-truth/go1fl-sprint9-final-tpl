@@ -14,7 +14,6 @@ const (
 )
 
 var wg sync.WaitGroup
-var mu sync.Mutex
 
 // generateRandomElements generates random elements.
 func generateRandomElements(size int) []int {
@@ -84,7 +83,7 @@ func maxChunks(data []int) int {
 	}
 
 	// Slice to store maximum values, identified by dedicated Go routines
-	var maxValues []int
+	maxValues := make([]int, CHUNKS)
 
 	// Chunk storage
 	var chunk []int
@@ -98,7 +97,6 @@ func maxChunks(data []int) int {
 	}
 
 	// Executing Go routines
-
 	for i := 0; i < CHUNKS; i++ {
 
 		wg.Add(1)
@@ -106,12 +104,6 @@ func maxChunks(data []int) int {
 		// Calculating chunk's start and end positions
 		chunkStartIndex := i * chunkSize
 		chunkEndIndex := (chunkStartIndex + chunkSize)
-
-		// If we have already processed one chunk and the next one exceeds total amount of elements, we are done
-		if (i > 0) && (chunkEndIndex >= len(data)) {
-			wg.Done()
-			break
-		}
 
 		// If we are executing a last Goroutine, and there is still data to process, add this leftover to a chunk
 		// Otherwise compose a chunk using start and end positions
@@ -123,20 +115,14 @@ func maxChunks(data []int) int {
 		}
 
 		// Executing a single Goroutine
-		go func(chunk []int) {
-
-			// Setting mutex
-			mu.Lock()
+		go func(index int, chunk []int) {
 
 			defer wg.Done()
 
 			// Calculating a max value for a chunk and store it in a slice of maximum values
-			maxValues = append(maxValues, maximum(chunk))
+			maxValues[index] = maximum(chunk)
 
-			// Releasing mutex
-			mu.Unlock()
-
-		}(chunk)
+		}(i, chunk)
 	}
 
 	wg.Wait()
